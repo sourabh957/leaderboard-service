@@ -1,0 +1,32 @@
+server:
+  address: ${SERVER_ADDRESS:127.0.0.1}
+  port: ${SERVER_PORT:8082}
+spring:
+  jackson:
+    deserialization:
+      accept-float-as-int: false
+  application:
+    name: leaderboard-service
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+      connect-timeout: 2s
+      timeout: 2s
+leaderboard:
+  key-prefix: ${LEADERBOARD_KEY_PREFIX:leaderboard}
+  idempotency-ttl-seconds: ${IDEMPOTENCY_TTL_SECONDS:86400}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,redis

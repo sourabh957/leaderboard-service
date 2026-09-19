@@ -1,0 +1,758 @@
+{
+  "info": {
+    "_postman_id": "f65b407e-8d1a-4f7e-a98c-6b664b688aa9",
+    "name": "Leaderboard Service - API and Flow Tests",
+    "description": "Run in order against the locally running service. The first request creates unique run IDs. Successful completion removes seeded players. Retry receipts expire automatically. Redis is managed independently.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8082"
+    },
+    {
+      "key": "gameId",
+      "value": "postman-demo"
+    },
+    {
+      "key": "leaderboardId",
+      "value": "season-1"
+    },
+    {
+      "key": "requestId",
+      "value": "match-demo"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Health and initialize isolated run",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/actuator/health/readiness"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set(\"gameId\", \"postman-\" + Date.now() + \"-\" + Math.floor(Math.random() * 100000));",
+              "pm.collectionVariables.set(\"requestId\", \"match-\" + Date.now());"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const leaderboardResult = pm.response.json();",
+              "pm.test(\"Response check 1\", () => { pm.expect(leaderboardResult.status).to.eql(\"UP\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Empty leaderboard",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/games/{{gameId}}/leaderboards/{{leaderboardId}}/entries"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const leaderboardResult = pm.response.json();",
+              "pm.test(\"Response check 1\", () => { pm.expect(leaderboardResult.entries).to.eql([]); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Set alice score",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/games/{{gameId}}/leaderboards/{{leaderboardId}}/players/alice/score",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"score\": 100\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const leaderboardResult = pm.response.json();",
+              "pm.test(\"Response check 1\", () => { pm.expect(leaderboardResult.score).to.eql(100); });",
+              "pm.test(\"Response check 2\", () => { pm.expect(leaderboardResult.playerId).to.eql(\"alice\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Set bob score",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/games/{{gameId}}/leaderboards/{{leaderboardId}}/players/bob/score",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"score\": 200\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const leaderboardResult = pm.response.json();",
+              "pm.test(\"Response check 1\", () => { pm.expect(leaderboardResult.score).to.eql(200); });",
+              "pm.test(\"Response check 2\", () => { pm.expect(leaderboardResult.playerId).to.eql(\"bob\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Set carol score",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/games/{{gameId}}/leaderboards/{{leaderboardId}}/players/carol/score",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"score\": 150\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const leaderboardResult = pm.response.json();",
+              "pm.test(\"Response check 1\", () => { pm.expect(leaderboardResult.score).to.eql(150); });",
+              "pm.test(\"Response check 2\", () => { pm.expect(leaderboardResult.playerId).to.eql(\"carol\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 - Top three",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/games/{{gameId}}/leaderboards/{{leaderboardId}}/entries?limit=3"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const leaderboardResult = pm.response.json();",
+              "pm.test(\"Response check 1\", () => { pm.expect(leaderboardResult.entries.map(e => e.playerId)).to.eql([\"bob\", \"carol\", \"alice\"]); });",
+              "pm.test(\"Response check 2\", () => { pm.expect(leaderboardResult.entries.map(e => e.rank)).to.eql([1, 2, 3]); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - Page preserves absolute rank",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/games/{{gameId}}/leaderboards/{{leaderboardId}}/entries?offset=1&limit=1"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const leaderboardResult = pm.response.json();",
+              "pm.test(\"Response check 1\", () => { pm.expect(leaderboardResult.entries).to.have.lengthOf(1); });",
+              "pm.test(\"Response check 2\", () => { pm.expect(leaderboardResult.entries[0]).to.include({playerId:\"carol\",score:150,rank:2}); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 - Player rank",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/games/{{gameId}}/leaderboards/{{leaderboardId}}/players/alice"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const leaderboardResult = pm.response.json();",
+              "pm.test(\"Response check 1\", () => { pm.expect(leaderboardResult).to.include({playerId:\"alice\",score:100,rank:3}); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 - Add points",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/games/{{gameId}}/leaderboards/{{leaderboardId}}/players/alice/score-adjustments",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"delta\":150,\"requestId\":\"{{requestId}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const leaderboardResult = pm.response.json();",
+              "pm.test(\"Response check 1\", () => { pm.expect(leaderboardResult).to.include({score:250,replayed:false}); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 - Retry does not add twice",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/games/{{gameId}}/leaderboards/{{leaderboardId}}/players/alice/score-adjustments",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"delta\":150,\"requestId\":\"{{requestId}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const leaderboardResult = pm.response.json();",
+              "pm.test(\"Response check 1\", () => { pm.expect(leaderboardResult).to.include({score:250,replayed:true}); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 - Conflicting reuse is rejected",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/games/{{gameId}}/leaderboards/{{leaderboardId}}/players/alice/score-adjustments",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"delta\":151,\"requestId\":\"{{requestId}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
+              "const leaderboardResult = pm.response.json();",
+              "pm.test(\"Response check 1\", () => { pm.expect(leaderboardResult.status).to.eql(409); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12 - Confirm current score and rank",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/games/{{gameId}}/leaderboards/{{leaderboardId}}/players/alice"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const leaderboardResult = pm.response.json();",
+              "pm.test(\"Response check 1\", () => { pm.expect(leaderboardResult).to.include({score:250,rank:1}); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13 - Neighbors",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/games/{{gameId}}/leaderboards/{{leaderboardId}}/players/bob/neighbors?radius=1"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const leaderboardResult = pm.response.json();",
+              "pm.test(\"Response check 1\", () => { pm.expect(leaderboardResult.entries.map(e=>e.playerId)).to.eql([\"alice\",\"bob\",\"carol\"]); });",
+              "pm.test(\"Response check 2\", () => { pm.expect(leaderboardResult.entries.map(e=>e.rank)).to.eql([1,2,3]); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "14 - Ascending leaderboard",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/games/{{gameId}}/leaderboards/{{leaderboardId}}/entries?order=asc"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const leaderboardResult = pm.response.json();",
+              "pm.test(\"Response check 1\", () => { pm.expect(leaderboardResult.entries.map(e=>e.playerId)).to.eql([\"carol\",\"bob\",\"alice\"]); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "15 - Ascending player rank",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/games/{{gameId}}/leaderboards/{{leaderboardId}}/players/carol?order=asc"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const leaderboardResult = pm.response.json();",
+              "pm.test(\"Response check 1\", () => { pm.expect(leaderboardResult.rank).to.eql(1); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "16 - Subtract points",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/games/{{gameId}}/leaderboards/{{leaderboardId}}/players/alice/score-adjustments",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"delta\":-50,\"requestId\":\"{{requestId}}-penalty\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const leaderboardResult = pm.response.json();",
+              "pm.test(\"Response check 1\", () => { pm.expect(leaderboardResult).to.include({score:200,replayed:false}); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "17 - Equal scores have deterministic ordering",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/games/{{gameId}}/leaderboards/{{leaderboardId}}/entries"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const leaderboardResult = pm.response.json();",
+              "pm.test(\"Response check 1\", () => { pm.expect(leaderboardResult.entries.map(e=>e.playerId)).to.eql([\"bob\",\"alice\",\"carol\"]); });",
+              "pm.test(\"Response check 2\", () => { pm.expect(leaderboardResult.entries.map(e=>e.rank)).to.eql([1,2,3]); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "18 - Participant count",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/games/{{gameId}}/leaderboards/{{leaderboardId}}/stats"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const leaderboardResult = pm.response.json();",
+              "pm.test(\"Response check 1\", () => { pm.expect(leaderboardResult.participantCount).to.eql(3); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "19 - Other season is isolated",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/games/{{gameId}}/leaderboards/other-season/stats"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const leaderboardResult = pm.response.json();",
+              "pm.test(\"Response check 1\", () => { pm.expect(leaderboardResult.participantCount).to.eql(0); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "20 - Fractional scores rejected",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/games/{{gameId}}/leaderboards/{{leaderboardId}}/players/alice/score",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"score\": 1.5\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+              "const leaderboardResult = pm.response.json();",
+              "pm.test(\"Response check 1\", () => { pm.expect(leaderboardResult.status).to.eql(400); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "21 - Invalid pagination rejected",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/games/{{gameId}}/leaderboards/{{leaderboardId}}/entries?limit=101"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+              "const leaderboardResult = pm.response.json();",
+              "pm.test(\"Response check 1\", () => { pm.expect(leaderboardResult.status).to.eql(400); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "22 - Missing player",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/games/{{gameId}}/leaderboards/{{leaderboardId}}/players/missing"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+              "const leaderboardResult = pm.response.json();",
+              "pm.test(\"Response check 1\", () => { pm.expect(leaderboardResult.status).to.eql(404); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "23 - Invalid request did not change score",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/games/{{gameId}}/leaderboards/{{leaderboardId}}/players/alice"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const leaderboardResult = pm.response.json();",
+              "pm.test(\"Response check 1\", () => { pm.expect(leaderboardResult.score).to.eql(200); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "24 - Remove alice",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/games/{{gameId}}/leaderboards/{{leaderboardId}}/players/alice"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "25 - Remove bob",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/games/{{gameId}}/leaderboards/{{leaderboardId}}/players/bob"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "26 - Remove carol",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/games/{{gameId}}/leaderboards/{{leaderboardId}}/players/carol"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "27 - Removal is idempotent",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/games/{{gameId}}/leaderboards/{{leaderboardId}}/players/alice"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "28 - Removed player is absent",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/games/{{gameId}}/leaderboards/{{leaderboardId}}/players/alice"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+              "const leaderboardResult = pm.response.json();",
+              "pm.test(\"Response check 1\", () => { pm.expect(leaderboardResult.status).to.eql(404); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "29 - No participants remain",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/games/{{gameId}}/leaderboards/{{leaderboardId}}/stats"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const leaderboardResult = pm.response.json();",
+              "pm.test(\"Response check 1\", () => { pm.expect(leaderboardResult.participantCount).to.eql(0); });"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
